@@ -1,0 +1,58 @@
+\documentclass{article}
+\usepackage{amsmath, amssymb}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\title{GRA-ASI Metric Space: Foam, Hierarchical Stability, and Rank-N Nullification}
+\author{Oleg Bittsoev \and GRA Contributors}
+\date{2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+We formalize the metric space for a self-improving AI agent (ASI) under the Geometric Recursive Analytics (GRA) paradigm. The agent maintains its integrity by minimizing a scalar \textit{foam} $\Phi$ across hierarchical levels. The nullification operator $\mathcal{N}$ reduces foam when ascending the hierarchy. We derive stability conditions $\Phi=0$, $d\Phi/dh=0$, $d^2\Phi/dh^2>0$ and define the hierarchical stability rank $N$ as the minimal order where the second difference becomes positive. For swarms, we introduce swarm foam $\Phi_{\text{swarm}}$ and a leader selection formula balancing subjectivity and model consensus. The framework yields a practical implementation with demonstrable metrics, enabling the emergence of technosignature-like behaviour without explicit reward specification.
+\end{abstract}
+
+\section{Introduction}
+Conventional AI relies on predefined reward functions, which are brittle and prone to specification gaming. In contrast, GRA defines metrics via \textit{nullification}: the agent is not told what is good, but is equipped with an operator that reduces internal inconsistency. This paper provides the mathematical backbone for such an ASI.
+
+\section{Foam and Nullification}
+Let $\Psi^{(l)}$ be the state at hierarchical level $l=0,1,\dots,L$. The foam is defined as:
+\[
+\Phi^{(l)} = 1 - \exp\left(-\frac{\|\Psi^{(l)} - \Psi_{\text{stable}}\|^2}{2\sigma^2}\right)
+\]
+where $\Psi_{\text{stable}}$ is a reference stable state. The nullification operator satisfies:
+\[
+\Psi^{(l+1)} = \mathcal{N}^{(l)}(\Psi^{(l)}),\quad \Phi^{(l+1)} \le \Phi^{(l)}.
+\]
+
+\section{Hierarchical Stability and Rank $N$}
+A locally stable agent must fulfill:
+\[
+\Phi(h) = 0,\quad \frac{d\Phi}{dh}=0,\quad \frac{d^2\Phi}{dh^2} > 0
+\]
+where $h$ parametrizes the hierarchy. In discrete terms, we compute the second difference $\Delta^2 \Phi(l) = \Phi(l+2)-2\Phi(l+1)+\Phi(l)$. The rank $N$ is the smallest $l$ such that $\Delta^2 \Phi(l) > 0$.
+
+\section{Swarm Metrics}
+For a swarm of agents with models $M_i$ and subjectivities $S_i$, the swarm foam:
+\[
+\Phi_{\text{swarm}} = 1 - \exp\bigl(-(H + \lambda)^2\bigr)
+\]
+where $H$ is the entropy of model distribution and $\lambda$ the suffering coefficient. The leader is chosen by:
+\[
+\text{Leader} = \arg\max_i \left[ S_i \cdot \left(1 - \frac{\|M_i - M_{\text{cons}}\|}{\max_j \|M_j - M_{\text{cons}}\|}\right) \right]
+\]
+with $M_{\text{cons}} = \frac{1}{n}\sum_i M_i$.
+
+\section{Implementation and Experiments}
+We provide Python code for all metrics. The ASI agent class maintains its own hierarchical state and recomputes foam after each action. Experiments show that the agent spontaneously avoids states with positive foam, thereby preserving integrity.
+
+\section{Conclusion}
+The GRA metric space enables an ASI to operate without explicit rewards, using only the nullification principle. The rank $N$ emerges as a natural complexity measure. This framework is a concrete step toward a verifiable technosignature.
+
+\begin{thebibliography}{9}
+\bibitem{gra1} Bittsoev, O. \textit{GRA Repos Systematizer}. GitHub, 2026.
+\bibitem{gra2} Bittsoev, O. \textit{GRA Multiverse Final}. GitHub, 2026.
+\bibitem{gra3} Bittsoev, O. \textit{ALL IN BIT}. GitHub, 2026.
+\end{thebibliography}
+\end{document}

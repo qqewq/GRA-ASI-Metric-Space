@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GRA-ASI Metrics Demo</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 2rem; background: #f5f5f5; }
+        .container { max-width: 800px; margin: auto; background: white; padding: 2rem; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        h1, h2 { color: #1e3c72; }
+        .metric { margin: 1rem 0; padding: 1rem; background: #eef2f7; border-radius: 8px; }
+        button { background: #1e3c72; color: white; border: none; padding: 0.5rem 1rem; border-radius: 8px; cursor: pointer; }
+        input, select, textarea { margin: 0.5rem 0; padding: 0.5rem; width: 100%; }
+        canvas { max-height: 300px; margin: 1rem 0; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>🧠 GRA-ASI Metric Space</h1>
+    <p>Demonstration of foam (<em>Φ</em>), hierarchical stability, and swarm leader selection.</p>
+
+    <div class="metric">
+        <h2>📊 Foam Calculator</h2>
+        <label>State vector (comma separated): <input id="stateVec" value="1.0,1.0"></label>
+        <label>Stable vector (comma separated): <input id="stableVec" value="0.0,0.0"></label>
+        <label>Sigma σ: <input id="sigma" type="number" value="1.0" step="0.1"></label>
+        <button id="computeFoamBtn">Compute Φ</button>
+        <p id="foamResult">Φ = ...</p>
+    </div>
+
+    <div class="metric">
+        <h2>📈 Hierarchical Stability</h2>
+        <label>Foam history (comma separated): <input id="foamHistory" value="0.5,0.3,0.1,0.0,0.0"></label>
+        <button id="checkStabilityBtn">Check Stability & Rank N</button>
+        <p id="stabilityResult">Stable: ... , Rank N: ...</p>
+    </div>
+
+    <div class="metric">
+        <h2>🐝 Swarm Leader Selection</h2>
+        <label>Agents (subjectivity, model_x, model_y):<br>
+            <textarea id="agentsData" rows="3" cols="50">0.9,1.0,0.0
+0.6,0.5,0.5
+0.3,0.0,1.0</textarea>
+        </label>
+        <button id="selectLeaderBtn">Select Leader</button>
+        <p id="leaderResult"></p>
+        <h3>Swarm Foam</h3>
+        <label>Entropy H: <input id="entropy" type="number" value="0.7" step="0.1"></label>
+        <label>Suffering λ: <input id="suffering" type="number" value="1.0" step="0.1"></label>
+        <button id="computeSwarmFoamBtn">Compute Φ_swarm</button>
+        <p id="swarmFoamResult"></p>
+    </div>
+
+    <div class="metric">
+        <h2>📉 Foam Evolution (Simulation)</h2>
+        <button id="runSimulation">Run ASI Simulation (10 steps)</button>
+        <canvas id="foamChart"></canvas>
+    </div>
+</div>
+
+<script>
+    function parseVector(str) {
+        return str.split(',').map(Number).filter(v => !isNaN(v));
+    }
+
+    function computeFoam(stateArr, stableArr, sigma) {
+        if (stateArr.length !== stableArr.length) return NaN;
+        let sqSum = 0;
+        for (let i = 0; i < stateArr.length; i++) {
+            let d = stateArr[i] - stableArr[i];
+            sqSum += d*d;
+        }
+        return 1 - Math.exp(-sqSum / (2 * sigma * sigma));
+    }
+
+    document.getElementById('computeFoamBtn').onclick = () => {
+        const state = parseVector(document.getElementById('stateVec').value);
+        const stable = parseVector(document.getElementById('stableVec').value);
+        const sigma = parseFloat(document.getElementById('sigma').value);
+        const foam = computeFoam(state, stable, sigma);
+        document.getElementById('foamResult').innerText = `Φ = ${foam.toFixed(6)}`;
+    };
+
+    function secondDiff(arr, i) {
+        return arr[i+2] - 2*arr[i+1] + arr[i];
+    }
+
+    function hierarchicalRank(foamArr) {
+        if (foamArr.length < 3) return foamArr.length;
+        for (let i = 0; i <= foamArr.length-3; i++) {
+            if (secondDiff(foamArr, i) > 0) return i+2;
+        }
+        return foamArr.length;
+    }
+
+    function checkStability(foamArr, tol=1e-6) {
+        if (foamArr.length < 3) return [false, 0];
+        const last = foamArr[foamArr.length-1];
+        if (Math.abs(last) > tol) return [false, 0];
+        const firstDeriv = foamArr[foamArr.length-1] - foamArr[foamArr.length-2];
+        if (Math.abs(firstDeriv) > tol) return [false, 0];
+        const secondDeriv = foamArr[foamArr.length-1] - 2*foamArr[foamArr.length-2] + foamArr[foamArr.length-3];
+        if (secondDeriv <= 0) return [false, 0];
+        return [true, hierarchicalRank(foamArr)];
+    }
+
+    document.getElementById('checkStabilityBtn').onclick = () => {
+        let foamHistory = document.getElementById('foamHistory').value.split(',').map(Number);
+        const [stable, rank] = checkStability(foamHistory);
+        document.getElementById('stabilityResult').innerHTML = `Stable: ${stable}<br>Rank N: ${rank}`;
+    };
+
+    function swarmLeader(agents) {
+        if (agents.length === 0) return null;
+        let consensus = [0,0];
+        for (let a of agents) {
+            consensus[0] += a.model[0];
+            consensus[1] += a.model[1];
+        }
+        consensus[0] /= agents.length;
+        consensus[1] /= agents.length;
+        let maxDist = 0;
+        let dists = [];
+        for (let a of agents) {
+            let dx = a.model[0] - consensus[0];
+            let dy = a.model[1] - consensus[1];
+            let dist = Math.hypot(dx, dy);
+            dists.push(dist);
+            if (dist > maxDist) maxDist = dist;
+        }
+        if (maxDist === 0) maxDist = 1e-8;
+        let bestIdx = 0;
+        let bestScore = -Infinity;
+        for (let i = 0; i < agents.length; i++) {
+            let score = agents[i].subjectivity * (1 - dists[i]/maxDist);
+            if (score > bestScore) {
+                bestScore = score;
+                bestIdx = i;
+            }
+        }
+        return agents[bestIdx];
+    }
+
+    document.getElementById('selectLeaderBtn').onclick = () => {
+        const raw = document.getElementById('agentsData').value;
+        const lines = raw.trim().split('\n');
+        let agents = [];
+        for (let line of lines) {
+            let parts = line.split(',').map(Number);
+            if (parts.length >= 3) {
+                agents.push({
+                    subjectivity: parts[0],
+                    model: [parts[1], parts[2]]
+                });
+            }
+        }
+        const leader = swarmLeader(agents);
+        if (leader) {
+            document.getElementById('leaderResult').innerHTML = `Leader subjectivity: ${leader.subjectivity}, model: [${leader.model[0]}, ${leader.model[1]}]`;
+        } else {
+            document.getElementById('leaderResult').innerHTML = 'No valid agents';
+        }
+    };
+
+    function swarmFoam(entropy, suffering) {
+        return 1 - Math.exp(-Math.pow(entropy + suffering, 2));
+    }
+
+    document.getElementById('computeSwarmFoamBtn').onclick = () => {
+        const entropy = parseFloat(document.getElementById('entropy').value);
+        const suffering = parseFloat(document.getElementById('suffering').value);
+        const foam = swarmFoam(entropy, suffering);
+        document.getElementById('swarmFoamResult').innerText = `Φ_swarm = ${foam.toFixed(6)}`;
+    };
+
+    let chart;
+    document.getElementById('runSimulation').onclick = () => {
+        let state = [5.0, 5.0];
+        const stable = [0.0, 0.0];
+        const sigma = 2.0;
+        let foamHistory = [computeFoam(state, stable, sigma)];
+        for (let step = 0; step < 10; step++) {
+            state[0] += (Math.random() - 0.5) * 0.5;
+            state[1] += (Math.random() - 0.5) * 0.5;
+            foamHistory.push(computeFoam(state, stable, sigma));
+        }
+        const ctx = document.getElementById('foamChart').getContext('2d');
+        if (chart) chart.destroy();
+        chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: foamHistory.map((_,i)=>i),
+                datasets: [{ label: 'Foam Φ', data: foamHistory, borderColor: '#1e3c72', fill: false }]
+            },
+            options: { responsive: true, maintainAspectRatio: true }
+        });
+    };
+</script>
+</body>
+</html>
